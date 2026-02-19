@@ -8,7 +8,6 @@ set -e
 
 ENGINE_VERSION="2.0.0"
 
-# Ensure we are inside server root (Pterodactyl already sets this)
 WORKDIR="$(pwd)"
 
 if [ ! -d "$WORKDIR/core" ]; then
@@ -29,7 +28,6 @@ SERVER_TYPE="${SERVER_TYPE}"
 MINECRAFT_VERSION="${MINECRAFT_VERSION}"
 CHANGE_POLICY="${CHANGE_POLICY:-balanced}"
 UPDATE_MODE="${UPDATE_MODE:-preserve}"
-AUTO_BACKUP="${AUTO_BACKUP:-true}"
 FORCE_CHANGE="${FORCE_CHANGE:-false}"
 
 # ===========================
@@ -55,12 +53,11 @@ source core/version.sh       || { log_error "Version module missing."; exit 1; }
 source core/state.sh         || { log_error "State module missing."; exit 1; }
 source core/compatibility.sh || { log_error "Compatibility module missing."; exit 1; }
 source core/policy.sh        || { log_error "Policy module missing."; exit 1; }
-source core/backup.sh        || { log_error "Backup module missing."; exit 1; }
 source core/java.sh          || { log_error "Java module missing."; exit 1; }
 
 log_info "Engine boot starting..."
 log_info "Server Type: $SERVER_TYPE"
-log_info "Minecraft Version: $MINECRAFT_VERSION"
+log_info "Requested Version: $MINECRAFT_VERSION"
 log_info "Policy: $CHANGE_POLICY"
 log_info "Update Mode: $UPDATE_MODE"
 log_info "Force Override: $FORCE_CHANGE"
@@ -69,19 +66,11 @@ log_info "Force Override: $FORCE_CHANGE"
 # Initialize Systems
 # ===========================
 
-initialize_version_system
-initialize_state_system
-classify_change
-log_compatibility_summary
-evaluate_policy
-log_policy_summary
-initialize_java_system
-
-# ===========================
-# Backup if Needed
-# ===========================
-
-create_backup
+initialize_version_system      # Resolves TARGET_VERSION
+initialize_state_system        # Loads PREVIOUS state
+classify_change                # Determines CHANGE_TYPE
+evaluate_policy                # Applies policy rules
+initialize_java_system         # Validates Java compatibility
 
 # ===========================
 # Load Engine Module
@@ -97,28 +86,38 @@ fi
 source "$ENGINE_SCRIPT"
 
 # ===========================
-# Clean if Required
+# Apply Changes If Needed
 # ===========================
 
-if [ "$UPDATE_MODE" = "clean" ]; then
-    log_warn "Executing clean environment procedure."
-    clean_environment
+if [ "$CHANGE_TYPE" = "first_install" ]; then
+
+    log_info "First installation detected."
+
+    install_engine
+    save_current_state
+
+elif [ "$VERSION_CHANGED" = "true" ]; then
+
+    log_info "Version change detected."
+
+    if [ "$UPDATE_MODE" = "clean" ]; then
+        log_warn "Executing clean environment procedure."
+        clean_environment
+    fi
+
+    install_engine
+    save_current_state
+
+else
+
+    log_info "No version change detected. Starting normally."
+
 fi
-
-# ===========================
-# Install / Update Engine
-# ===========================
-
-install_engine
-
-# ===========================
-# Save State
-# ===========================
-
-save_current_state
 
 # ===========================
 # Start Server
 # ===========================
+
+log_info "Starting $ENGINE_PROFILE $TARGET_VERSION"
 
 start_server
