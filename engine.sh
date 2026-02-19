@@ -4,9 +4,18 @@
 # Minecraft Universal Engine - Enterprise Core
 # ==================================================
 
-cd /mnt/server || exit 1
+set -e
 
 ENGINE_VERSION="2.0.0"
+
+# Ensure we are inside server root (Pterodactyl already sets this)
+WORKDIR="$(pwd)"
+
+if [ ! -d "$WORKDIR/core" ]; then
+    echo "[FATAL] Engine core directory not found."
+    echo "Current directory: $WORKDIR"
+    exit 1
+fi
 
 echo "================================================"
 echo " Minecraft Universal Engine v$ENGINE_VERSION"
@@ -41,19 +50,20 @@ fi
 # Load Core Modules
 # ===========================
 
-source core/logger.sh || { echo "Logger module missing."; exit 1; }
-source core/version.sh || { log_error "Version module missing."; exit 1; }
-source core/state.sh || { log_error "State module missing."; exit 1; }
+source core/logger.sh        || { echo "[FATAL] Logger module missing."; exit 1; }
+source core/version.sh       || { log_error "Version module missing."; exit 1; }
+source core/state.sh         || { log_error "State module missing."; exit 1; }
 source core/compatibility.sh || { log_error "Compatibility module missing."; exit 1; }
-source core/policy.sh || { log_error "Policy module missing."; exit 1; }
-source core/backup.sh || { log_error "Backup module missing."; exit 1; }
-source core/java.sh || { log_error "Java module missing."; exit 1; }
+source core/policy.sh        || { log_error "Policy module missing."; exit 1; }
+source core/backup.sh        || { log_error "Backup module missing."; exit 1; }
+source core/java.sh          || { log_error "Java module missing."; exit 1; }
 
 log_info "Engine boot starting..."
 log_info "Server Type: $SERVER_TYPE"
 log_info "Minecraft Version: $MINECRAFT_VERSION"
 log_info "Policy: $CHANGE_POLICY"
 log_info "Update Mode: $UPDATE_MODE"
+log_info "Force Override: $FORCE_CHANGE"
 
 # ===========================
 # Initialize Systems
