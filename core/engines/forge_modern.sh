@@ -56,7 +56,7 @@ start_server() {
         log_info "Archivo unix_args.txt detectado. Arrancando JVM..."
         
         # Inyectamos el control de RAM del panel y los argumentos nativos de Forge
-        java -Xms128M -XX:MaxRAMPercentage=95.0 \
+        "$JAVA_BIN" -Xms128M -XX:MaxRAMPercentage=95.0 \
              -Dterminal.jline=false \
              -Dterminal.ansi=true \
              @"$UNIX_ARGS_FILE" nogui "$@"

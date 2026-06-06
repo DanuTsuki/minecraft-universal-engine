@@ -40,7 +40,7 @@ start_server() {
     log_info "Iniciando servidor Fabric Loader."
 
     # Fabric se auto-gestiona a través de su propio .jar unificado
-    java -Xms128M -XX:MaxRAMPercentage=95.0 \
+    "$JAVA_BIN" -Xms128M -XX:MaxRAMPercentage=95.0 \
          -Dterminal.jline=false \
          -Dterminal.ansi=true \
          -jar fabric-server.jar nogui

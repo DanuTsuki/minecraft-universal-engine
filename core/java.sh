@@ -1,30 +1,15 @@
 #!/bin/bash
 
-detect_current_java() {
-
-    JAVA_VERSION_RAW=$(java -version 2>&1 | head -n 1)
-
-    # Extract version number
-    if [[ "$JAVA_VERSION_RAW" =~ \"([0-9]+) ]]; then
-        CURRENT_JAVA_VERSION="${BASH_REMATCH[1]}"
-    else
-        log_warn "Unable to detect Java version."
-        CURRENT_JAVA_VERSION="unknown"
-    fi
-
-    log_info "Detected Java version: $CURRENT_JAVA_VERSION"
-}
-
 determine_required_java() {
-
-    REQUIRED_JAVA_VERSION="17"  # default modern
+    REQUIRED_JAVA_VERSION="21"  # Default para versiones modernas
 
     if [ "$MC_MINOR" -le 16 ]; then
         REQUIRED_JAVA_VERSION="8"
     fi
 
+    # Minecraft 1.17 originalmente usaba Java 16, pero Java 17 es la versión LTS estable recomendada
     if [ "$MC_MINOR" -eq 17 ]; then
-        REQUIRED_JAVA_VERSION="16"
+        REQUIRED_JAVA_VERSION="17"
     fi
 
     if [ "$MC_MINOR" -ge 18 ] && [ "$MC_MINOR" -le 20 ]; then
@@ -35,46 +20,39 @@ determine_required_java() {
         REQUIRED_JAVA_VERSION="21"
     fi
 
-    # Forge legacy override
+    # Excepción estricta para Forge Antiguo (1.12.2, etc.)
     if [ "$ENGINE_PROFILE" = "forge_legacy" ]; then
         REQUIRED_JAVA_VERSION="8"
     fi
 
-    log_info "Required Java version: $REQUIRED_JAVA_VERSION"
+    log_info "Java requerido para esta versión: Java $REQUIRED_JAVA_VERSION"
 }
 
-validate_java_compatibility() {
-
-    if [ "$CURRENT_JAVA_VERSION" = "unknown" ]; then
-        return
+set_java_executable() {
+    # Asignamos la ruta exacta del binario de Java dentro de nuestra imagen Alpine
+    if [ "$REQUIRED_JAVA_VERSION" = "8" ]; then
+        export JAVA_BIN="/usr/lib/jvm/java-1.8-openjdk/bin/java"
+    elif [ "$REQUIRED_JAVA_VERSION" = "17" ]; then
+        export JAVA_BIN="/usr/lib/jvm/java-17-openjdk/bin/java"
+    elif [ "$REQUIRED_JAVA_VERSION" = "21" ]; then
+        export JAVA_BIN="/usr/lib/jvm/java-21-openjdk/bin/java"
+    else
+        export JAVA_BIN="java" # Fallback al comando del sistema por defecto
     fi
 
-    if [ "$CURRENT_JAVA_VERSION" -ne "$REQUIRED_JAVA_VERSION" ]; then
-
-        log_warn "Java version mismatch detected."
-        log_warn "Current: $CURRENT_JAVA_VERSION"
-        log_warn "Required: $REQUIRED_JAVA_VERSION"
-
-        if [ "$CHANGE_POLICY" = "strict" ]; then
-            log_error "Strict policy blocks mismatched Java version."
-            exit 1
-        fi
-
-        if [ "$CHANGE_POLICY" = "balanced" ]; then
-            log_warn "Balanced policy allows start but may cause crash."
-        fi
-
-        if [ "$CHANGE_POLICY" = "permissive" ]; then
-            log_warn "Permissive mode: proceeding despite mismatch."
-        fi
+    # Verificamos que el ejecutable realmente exista en el contenedor
+    if [ -f "$JAVA_BIN" ]; then
+        log_info "Enrutamiento de Java exitoso: Usando Java $REQUIRED_JAVA_VERSION"
     else
-        log_info "Java version compatible."
+        log_warn "No se encontró el binario específico ($JAVA_BIN). Usando Java por defecto del sistema."
+        export JAVA_BIN="java"
     fi
 }
 
 initialize_java_system() {
-
-    detect_current_java
     determine_required_java
-    validate_java_compatibility
+    set_java_executable
+    
+    log_info "Versión de Java inyectada para el arranque:"
+    "$JAVA_BIN" -version 2>&1 | head -n 1
 }

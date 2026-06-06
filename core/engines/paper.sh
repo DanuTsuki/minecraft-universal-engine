@@ -43,7 +43,7 @@ start_server() {
 
     log_info "Starting Paper server."
 
-    java -Xms128M -XX:MaxRAMPercentage=95.0 \
+    "$JAVA_BIN" -Xms128M -XX:MaxRAMPercentage=95.0 \
          -Dterminal.jline=false \
          -Dterminal.ansi=true \
          -jar server.jar nogui
