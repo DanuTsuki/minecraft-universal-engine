@@ -25,8 +25,13 @@ install_engine() {
     fi
 
     log_info "Ejecutando instalador de dependencias de Forge (Server Mode)..."
-    # Ejecución silenciosa del instalador
-    java -jar forge-installer.jar --installServer nogui
+    # Forzamos la ejecución usando el Java enrutado para evitar conflictos de memoria
+    "$JAVA_BIN" -jar forge-installer.jar --installServer > install_log.txt 2>&1
+    
+    if [ ! -d "libraries/net/minecraftforge" ]; then
+        log_error "Error: La carpeta de librerías no se generó. Revisa install_log.txt"
+        exit 1
+    fi
 
     if [ $? -ne 0 ]; then
         log_error "El instalador de Forge devolvió un error durante la extracción."
