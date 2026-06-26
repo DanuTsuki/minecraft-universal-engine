@@ -3,14 +3,20 @@
 install_engine() {
     log_info "Iniciando instalación de NeoForge para Minecraft $TARGET_VERSION"
 
-    # Obtener el índice de versiones de NeoForge desde su API en Maven
-    log_info "Resolviendo build más reciente de NeoForge..."
-    # La API de NeoForge usa un formato XML en su Maven. Parseamos para obtener la última versión compatible
-    NEOFORGE_VERSION=$(curl -s "https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml" | grep -oP "(?<=<version>)${TARGET_VERSION}\.[0-9]+\.[0-9]+(?=</version>)" | tail -1)
+    # Evaluamos si TARGET_VERSION es una versión base (ej. 1.21.1) o un build específico (ej. 21.1.10 o 1.21.1-21.1.10)
+    if [[ "$TARGET_VERSION" == *"-"* ]] || [[ ! "$TARGET_VERSION" =~ ^1\. ]]; then
+        # Extraemos el build de NeoForge (toma todo lo que esté después del guion, o el string completo si no hay guion)
+        NEOFORGE_VERSION="${TARGET_VERSION##*-}"
+        log_info "Build específico detectado. Omitiendo Maven. Usando versión: $NEOFORGE_VERSION"
+    else
+        log_info "Versión base detectada. Resolviendo build más reciente en Maven..."
+        # La API de NeoForge usa un formato XML en su Maven. Parseamos para obtener la última versión compatible
+        NEOFORGE_VERSION=$(curl -s "https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml" | grep -oP "(?<=<version>)${TARGET_VERSION}\.[0-9]+\.[0-9]+(?=</version>)" | tail -1)
 
-    if [ -z "$NEOFORGE_VERSION" ]; then
-        # NeoForge 1.20.5 a 1.20.6 usa un formato ligeramente distinto (ej. 20.6.xx)
-        NEOFORGE_VERSION=$(curl -s "https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml" | grep -oP "(?<=<version>)${TARGET_VERSION#1.}\.[0-9]+(?=</version>)" | tail -1)
+        if [ -z "$NEOFORGE_VERSION" ]; then
+            # NeoForge 1.20.5 a 1.20.6 usa un formato ligeramente distinto (ej. 20.6.xx)
+            NEOFORGE_VERSION=$(curl -s "https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml" | grep -oP "(?<=<version>)${TARGET_VERSION#1.}\.[0-9]+(?=</version>)" | tail -1)
+        fi
     fi
 
     if [ -z "$NEOFORGE_VERSION" ]; then
