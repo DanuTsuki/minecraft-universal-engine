@@ -43,7 +43,7 @@ detect_engine_era() {
 detect_modded_flag() {
 
     case "$SERVER_TYPE" in
-        forge|fabric|sponge)
+        forge|neoforge|fabric|sponge)
             IS_MODDED="true"
             ;;
         *)
@@ -70,6 +70,10 @@ detect_engine_profile() {
             else
                 ENGINE_PROFILE="forge_modern"
             fi
+            ;;
+
+        neoforge)
+            ENGINE_PROFILE="neoforge"
             ;;
 
         fabric)
