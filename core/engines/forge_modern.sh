@@ -3,18 +3,26 @@
 install_engine() {
     log_info "Iniciando instalación de Forge Moderno para Minecraft $TARGET_VERSION"
 
-    # Obtener el índice de versiones de Forge (Slim Promo)
-    log_info "Resolviendo build recomendado/latest de Forge..."
-    FORGE_VERSION=$(curl -s https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json | jq -r --arg VER "$TARGET_VERSION" '.promos[$VER + "-recommended"] // .promos[$VER + "-latest"]')
+    # TARGET_VERSION puede ser una versión base (ej. 1.21.1) o un build completo
+    # (ej. 1.21.1-52.0.1). Si ya contiene un guion, lo usamos directamente.
+    if [[ "$TARGET_VERSION" == *"-"* ]]; then
+        MC_VERSION="${TARGET_VERSION%%-*}"
+        FORGE_VERSION="${TARGET_VERSION##*-}"
+        log_info "Build específico detectado. MC: $MC_VERSION | Forge: $FORGE_VERSION"
+    else
+        MC_VERSION="$TARGET_VERSION"
+        log_info "Versión base detectada. Resolviendo build recomendado/latest de Forge..."
+        FORGE_VERSION=$(curl -s https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json | jq -r --arg VER "$MC_VERSION" '.promos[$VER + "-recommended"] // .promos[$VER + "-latest"]')
 
-    if [ -z "$FORGE_VERSION" ] || [ "$FORGE_VERSION" = "null" ]; then
-        log_error "No se pudo resolver una versión de Forge para Minecraft $TARGET_VERSION"
-        exit 1
+        if [ -z "$FORGE_VERSION" ] || [ "$FORGE_VERSION" = "null" ]; then
+            log_error "No se pudo resolver una versión de Forge para Minecraft $MC_VERSION"
+            exit 1
+        fi
     fi
 
     log_info "Build de Forge seleccionado: $FORGE_VERSION"
     
-    INSTALLER_URL="https://maven.minecraftforge.net/net/minecraftforge/forge/${TARGET_VERSION}-${FORGE_VERSION}/forge-${TARGET_VERSION}-${FORGE_VERSION}-installer.jar"
+    INSTALLER_URL="https://maven.minecraftforge.net/net/minecraftforge/forge/${MC_VERSION}-${FORGE_VERSION}/forge-${MC_VERSION}-${FORGE_VERSION}-installer.jar"
     
     log_info "Descargando instalador de Forge..."
     curl -s -S -L -o forge-installer.jar "$INSTALLER_URL"
@@ -25,7 +33,6 @@ install_engine() {
     fi
 
     log_info "Ejecutando instalador de dependencias de Forge (Server Mode)..."
-    # Forzamos la ejecución usando el Java enrutado para evitar conflictos de memoria
     "$JAVA_BIN" -jar forge-installer.jar --installServer > install_log.txt 2>&1
     
     if [ ! -d "libraries/net/minecraftforge" ]; then
@@ -38,7 +45,6 @@ install_engine() {
         exit 1
     fi
 
-    # Limpieza inmediata para optimizar almacenamiento del nodo
     rm -f forge-installer.jar forge-installer.jar.log
     log_info "Árbol de dependencias de Forge instalado con éxito."
 }
