@@ -20,7 +20,35 @@ resolve_target_version() {
 
 parse_version_components() {
 
-    IFS='.' read -r MC_MAJOR MC_MINOR MC_PATCH <<< "$TARGET_VERSION"
+    # ── Snapshot: 25w14a, 24w46a ──────────────────────────────────────────────
+    if [[ "$TARGET_VERSION" =~ ^[0-9]{2}w[0-9]{2}[a-z]+$ ]]; then
+        IS_SNAPSHOT="true"
+        # Treat all snapshots as modern (1.21+) so era/java logic works correctly
+        MC_MAJOR="1"
+        MC_MINOR="99"
+        MC_PATCH="0"
+        MC_BASE="$TARGET_VERSION"
+        log_info "Snapshot version detected ($TARGET_VERSION) — treating as modern era"
+        return
+    fi
+
+    IS_SNAPSHOT="false"
+
+    # ── Forge build: 1.21.1-52.1.14 ──────────────────────────────────────────
+    # ── NeoForge short build: 21.1.14 (no leading "1.") ──────────────────────
+    # Strip the part after the dash (Forge suffix) to get the pure MC version
+    MC_BASE="${TARGET_VERSION%%-*}"
+
+    IFS='.' read -r MC_MAJOR MC_MINOR MC_PATCH <<< "$MC_BASE"
+
+    # NeoForge short builds look like "21.1.14" — MC_MAJOR would be "21"
+    # which is not a valid Minecraft major version, so remap it.
+    # e.g.  21.1.14  → MC_MAJOR=1  MC_MINOR=21  MC_PATCH=1
+    if [[ "$MC_MAJOR" =~ ^[2-9][0-9]+$ ]]; then
+        MC_PATCH="$MC_MINOR"
+        MC_MINOR="$MC_MAJOR"
+        MC_MAJOR="1"
+    fi
 
     if [ -z "$MC_PATCH" ]; then
         MC_PATCH="0"
